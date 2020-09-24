@@ -3,46 +3,22 @@
 UI = {}
 UI.Manager = function(q){
 	var self = this
-	var collapseEl, expandEl
-	this.tabList = ['files', 'info']
-	this.tabElList = [
-		E('div', { class: 'fl tab active' }, 'Files').on('click', function(){ self.onTabClick(this) }),
-		E('div', { class: 'fl tab' }, 'Info').on('click', function(){ self.onTabClick(this) })
-	]
-	this.tabContainerList = [
-		this.elDir = E('td', { id: 'ui_directories' }),
-		this.elInfo = E('td', { id: 'ui_info', style: 'display: none;' })
-	]
-	// this.infoTabVisibleButtons = [
-		// E('div', { class: 'fl top-button', style: 'display: none;' }, 'Collapse')
-		// .on('click', this.onCollapseClick.bind(this)),
-		// E('div', { class: 'fl top-button', style: 'display: none;' }, 'Expand')
-		// .on('click', this.onExpandClick.bind(this))
-	// ]
 	this.el = E('div', { id: 'ui_manager' })
 	.A(
 		this.elLeft = E('table', { id: 'ui_left_outer', class: 'pa' })
 		.A(E('thead')
-			.A(E('tr').A(E('td')
-				.A(
-					E('div', { class: 'fr top-button-cont' })
-					// .AA(this.infoTabVisibleButtons)
-					.A(E('div', { class: 'cl' }))
-				)
-				.A(
-					E('div', { class: 'fl tab-cont' })
-					.AA(this.tabElList)
-					.A(E('div', { class: 'cl' }))
-				)
+			.A(E('tr').A(this.elTabs = E('td', { class: 'tab-cont' })
+				.A(E('div', { class: 'fl tab active' }, 'Files').on('click', UI.Manager.Tab_onClick))
+				.A(E('div', { class: 'fl tab' }, 'Info').on('click', UI.Manager.Tab_onClick))
 				.A(E('div', { class: 'cl' }))
 			))
 		)
 		.A(E('tbody').A(E('tr').A(E('td')
 			.A(E('div')
 				.A(E('table', { id: 'ui_left' }).A(E('tbody')
-					.A(
-						E('tr')
-						.AA(this.tabContainerList)
+					.A(E('tr')
+						.A(this.elDir = E('td', { id: 'ui_directories' }))
+						.A(this.elInfo = E('td', { id: 'ui_info', style: 'display: none;' }))
 					)
 				))
 			)
@@ -68,6 +44,16 @@ UI.Manager = function(q){
 	q.el.A(this.el)
 }
 
+UI.Manager.Tab_onClick = function(){
+	if (this.CC('active')){ return }
+	var p = this.p()
+	var active_idx = p.index(F('.active', p)[0].CR('active'))
+	var idx = p.index(this.CA('active'))
+	var ch = p.p(2).next().firstChild.firstChild.firstChild
+	.firstChild.firstChild.firstChild.children
+	ch[ active_idx ].H()
+	ch[ idx ].S()
+}
 UI.Manager.DirFolder_onClick = function(){
 	this.CT('active')
 	var a = this
@@ -123,29 +109,24 @@ function UIC_Print(object, schema, schema_template, stack, path, level){
 	stack = stack || []
 	path = path || []
 	stack.push(object)
+	var children, block, top, bottom, value, array_children
+	var title
 	
-	var el = E('div', { class: 'print-block print-collapsable' })
+	var el = E('div', { class: 'print-block' })
 	.A(cont = E('div', {
 		class: 'print-block-top',
 		style: 'padding-left: '+ (level * 20) +'px;'
 	}))
 	
-	var self = {
-		el: el,
-		children: []
-	}
 	var path_title = path.join(' > ')
 	
-	if (object === null){
-		cont.A(E('span', { class: 'print-object', title: path_title }, 'null'))
-		return el
-	}
 	switch (typeof object){
 	case 'number':
 		cont.A(E('span', { class: 'print-number', title: path_title }, object.toString()))
 		return el
 		break
 	case 'boolean':
+	case 'null':
 		cont.A(E('span', { class: 'print-object', title: path_title }, object.toString()))
 		return el
 		break
@@ -156,38 +137,25 @@ function UIC_Print(object, schema, schema_template, stack, path, level){
 	}
 	
 	var is_array = false,
-		data = object,
-		titleEl, title, children
+		data = object
 	if (object instanceof UIC){
-		cont.A(titleEl = E('span', { class: 'print-object', title: path_title }, title = 'UIC'))
+		cont.A(E('span', { class: 'print-object', title: path_title }, title = 'UIC'))
 		data = data.data
 	}
 	else if (object instanceof UIC_Template){
-		cont.A(titleEl = E('span', { class: 'print-object', title: path_title }, title = 'UIC_Template'))
+		cont.A(E('span', { class: 'print-object', title: path_title }, title = 'UIC_Template'))
 		data = data.data
 	}
 	else{
 		is_array = (data instanceof Array)
 		cont
-		.A(titleEl = E('span', { class: 'print-object', title: path_title }, title = (is_array ? 'Array('+ data.length +')' : 'object')))
+		.A(E('span', { class: 'print-object', title: path_title }, title = (is_array ? 'Array('+ data.length +')' : 'object')))
 		.A(ET(' '+ (is_array ? '[' : '{')))
 	}
-	titleEl
-	.on('mouseenter', () => {
-		el.CA('hover')
-	})
-	.on('mouseleave', () => {
-		el.CR('hover')
-	})
-	.on('click', () => {
-		el.CT('active')
-	})
 	
 	el.A(children = E('div'))
 	
 	for (var i in data){
-	((i) => {
-		var block, top, bottom, value, array_children
 		var v = data[i]
 		
 		var sch
@@ -237,42 +205,33 @@ function UIC_Print(object, schema, schema_template, stack, path, level){
 			if (v === null){
 				cont.A(value = E('span', { class: 'print-object' }, 'null'))
 			}
-			else if (sch_type[0] === 'array'){
-				if (v.length){ block.CA('print-collapsable') }
-				cont.A(
-					value = E('span', { class: 'print-object' }, 'Array('+ v.length +')')
-					.on('mouseenter', () => {
-						block.CA('hover')
-					})
-					.on('mouseleave', () => {
-						block.CR('hover')
-					})
-					.on('click', () => {
-						block.CT('active')
-					})
-				)
-				block.A(array_children = E('div'))
-				if (sch_child){
-					for (var j = 0; j < v.length; ++j){
-						var a = v[ j ],
-							b = UIC_Print(
-								a, sch_child, null, stack.slice(),
-								path.concat([data.name, i, j]), level + 1)
-						array_children.A(b)
+			else{
+				if (sch_type[0] === 'array'){
+					if (v.length){ block.CA('print-collapsable') }
+					cont.A(value = E('span', { class: 'print-object' }, 'Array('+ v.length +')'))
+					block.A(array_children = E('div'))
+					if (sch_child){
+						for (var j = 0; j < v.length; ++j){
+							var a = v[ j ],
+								b = UIC_Print(
+									a, sch_child, null, stack.slice(),
+									path.concat([data.name, i, j]), level + 1)
+							array_children.A(b)
+						}
+					}
+					else{
+						for (var j = 0; j < v.length; ++j){
+							var a = v[ j ],
+								b = UIC_Print(
+									a, schema, schema_template, stack.slice(),
+									path.concat([data.name, i, j]), level + 1)
+							array_children.A(b)
+						}
 					}
 				}
 				else{
-					for (var j = 0; j < v.length; ++j){
-						var a = v[ j ],
-							b = UIC_Print(
-								a, schema, schema_template, stack.slice(),
-								path.concat([data.name, i, j]), level + 1)
-						array_children.A(b)
-					}
+					cont.AA(UIC_PrintObject(v))
 				}
-			}
-			else{
-				cont.AA(UIC_PrintObject(v))
 			}
 			break
 		}
@@ -285,15 +244,12 @@ function UIC_Print(object, schema, schema_template, stack, path, level){
 		}
 		
 		children.A(block)
-	})(i)
 	}
 	
 	if (title === 'object' || is_array){
 		el.A(E('div', {
-				class: 'print-block-footer',
-				style: 'padding-left: '+ (level * 20) +'px;'
-			},
-			is_array ? ']' : '}'
+			class: 'print-block-footer',
+			style: 'padding-left: '+ (level * 20) +'px;' }, is_array ? ']' : '}'
 		))
 	}
 	
@@ -398,7 +354,6 @@ UIC.SCHEMA = {
 			'font_m_tracking': {},
 			'font_m_colour': {},
 			'fontcat_name': {},
-			'fontcat_colour': {},
 			'textoffset': {},
 			'b7': {},
 			'shader_name': {},
@@ -499,7 +454,7 @@ UIC.SCHEMA = {
 		}
 	},
 	'child': {
-		type: 'array.uic'
+		type: 'array'
 	},
 	'after': {}
 }
@@ -534,7 +489,7 @@ UIC.SCHEMA_TEMPLATE = {
 		}
 	},
 	'child': {
-		type: 'array.uic'
+		type: 'array'
 	}
 }
 extProt(
@@ -550,9 +505,6 @@ extProt(
 	},
 	'Print', function(container){
 		return UIC_Print(this, UIC.SCHEMA, UIC.SCHEMA_TEMPLATE)
-	},
-	'CollapseAll', function(){
-		
 	},
 	'GenerateDiv', function(){
 		if (!this.data.parent){
@@ -589,19 +541,8 @@ extProt(
 
 extProt(
 	UI.Manager.prototype,
-	'SelectTab', function(tab){
-		var tabIndex = this.tabList.index(tab)
-		var btn = this.tabElList[ tabIndex ]
-		if (btn.CC('active')){ return }
-		var p = btn.p()
-		var active_idx = this.tabElList.indexOf(
-			this.tabElList.find(btn => btn.CC('active')).CR('active')
-		)
-		btn.CA('active')
-		this.tabContainerList[ active_idx ].H()
-		this.tabContainerList[ tabIndex ].S()
-		
-		// this.infoTabVisibleButtons[tab === 'info' ? 'S' : 'H']()
+	'SelectTab', function(name){
+		this.elTabs.children[ ['files', 'info'].index(name) ].click()
 	},
 	'LoadFile', function(data, success){
 		function convert(r){
@@ -632,7 +573,7 @@ extProt(
 					'textlabel', 'b3',
 					'localized', 'b4', 'tooltip_id', 'b5',
 					'font_m_font_name', 'font_m_size', 'font_m_leading', 'font_m_tracking', 'font_m_colour',
-					'fontcat_name', 'fontcat_colour',
+					'fontcat_name',
 					'textoffset', 'b7',
 					'shader_name', 'shadervars',
 					'text_shader_name', 'textshadervars',
@@ -770,22 +711,11 @@ extProt(
 		this.LoadFile(el._data, function(r){
 			console.log(r)
 			self.SelectTab('info')
-			self.uic = r
 			self.elInfo.h('').A(r.Print())
 		})
 	},
 	'SetUICData', function(a){
-	},
-	'onTabClick', function(btn){
-		this.SelectTab(this.tabList[ this.tabElList.indexOf(btn) ])
-	},
-	'onCollapseClick', function(){
-		if (!this.uic){ return }
-		this.uic.CollapseAll()
-	},
-	'onExpandClick', function(){
-		if (!this.uic){ return }
-		this.uic.ExpandAll()
+	
 	}
 )
 
