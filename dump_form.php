@@ -1,6 +1,12 @@
+<html>
+<body>
+
+You submitted the thing <?php echo $_POST["name"]; ?><br>
+
 <?php
 echo '<pre style="word-break: break-all; white-space: pre-wrap;">';
 
+$FILEKEY = $_POST["name"];
 $all = include('get_dir_data.php');
 include 'class.php';
 
@@ -79,11 +85,11 @@ foreach ($DIR_DATA as $dir_key => $arr){
 		try{
 			$uic = new UIC();
 			$uic->read($h);
-
-			//if ($file === 'finance_screen'){ 
+			
+			if ($file === $FILEKEY){ 
 				// $type = 'error';
-				// $grouped[ $type ][ $path ] = $uic->debug();
-			//}
+				$grouped[ $type ][ $path ] = $uic->debug();
+			}
 
 		} catch (Exception $e){
 			$type = 'error';
@@ -113,4 +119,7 @@ foreach ($DIR_DATA as $dir_key => $arr){
 
 // var_dump(array_keys($grouped['ok']));
 var_dump($grouped);
+?>
 
+</body>
+</html>
